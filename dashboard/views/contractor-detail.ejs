@@ -1,0 +1,86 @@
+<%- include('_head', {title: 'Contractor: ' + (lead.company_name || 'Unknown')}) %>
+
+<div class="page-header">
+  <a href="/contractors" class="btn btn-ghost btn-sm">← Back to contractors</a>
+  <h1><%= lead.company_name || 'Unnamed contractor' %></h1>
+</div>
+
+<div class="grid-2col">
+
+  <div class="card">
+    <h3>Contact information</h3>
+    <table class="detail-table">
+      <tr><th>Score</th><td><span class="badge badge-score-<%= Math.min(10, lead.lead_score || 0) %>"><%= lead.lead_score || '-' %>/10</span></td></tr>
+      <tr><th>Phone</th><td><%= lead.phone || '— not available' %></td></tr>
+      <tr><th>Email</th><td><%= lead.email || '— not available' %></td></tr>
+      <tr><th>Website</th><td><%= lead.website ? `<a href="${lead.website}" target="_blank">${lead.website}</a>` : '—' %></td></tr>
+      <tr><th>Location</th><td><%= lead.location || '—' %></td></tr>
+      <tr><th>Source</th><td><span class="source-badge"><%= lead.source_platform %></span></td></tr>
+      <tr><th>Licensed</th><td><%= lead.licence_mentioned ? '✅ Yes' : '— No' %></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Status & actions</h3>
+    <table class="detail-table">
+      <tr><th>Contact status</th><td><span class="status-<%= lead.contact_status %>"><%= lead.contact_status %></span></td></tr>
+      <tr><th>Reply status</th><td><%= lead.reply_status || 'no_reply' %></td></tr>
+      <tr><th>Created</th><td><%= new Date(lead.created_at).toLocaleString('en-GB') %></td></tr>
+      <tr><th>Updated</th><td><%= lead.updated_at ? new Date(lead.updated_at).toLocaleString('en-GB') : '—' %></td></tr>
+    </table>
+  </div>
+
+  <div class="card grid-span-2">
+    <h3>Services offered</h3>
+    <p><%= lead.services_offered || 'No service details captured' %></p>
+  </div>
+
+  <div class="card grid-span-2">
+    <h3>Notes</h3>
+    <p><%= lead.notes || 'No notes' %></p>
+  </div>
+
+  <div class="card grid-span-2">
+    <h3>Original source</h3>
+    <p style="word-break: break-all;">
+      <a href="<%= lead.source_url %>" target="_blank" rel="noopener">
+        <%= lead.source_url %>
+      </a>
+    </p>
+    <p style="font-size: 12px; color: #888; margin-top: 8px;">
+      ⚠️ Some source sites (Yell, Checkatrade) may block direct browser access. 
+      All scraped data is preserved in this CRM regardless.
+    </p>
+  </div>
+
+  <% if (outreach && outreach.length > 0) { %>
+  <div class="card grid-span-2">
+    <h3>Outreach history (<%= outreach.length %>)</h3>
+    <table class="data-table">
+      <thead><tr><th>Channel</th><th>Status</th><th>Direction</th><th>Created</th></tr></thead>
+      <tbody>
+        <% outreach.forEach(function(o) { %>
+          <tr>
+            <td><%= o.channel %></td>
+            <td><%= o.delivery_status %></td>
+            <td><%= o.direction %></td>
+            <td><%= new Date(o.created_at).toLocaleString('en-GB') %></td>
+          </tr>
+        <% }); %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+</div>
+
+<style>
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-span-2 { grid-column: span 2; }
+  .detail-table { width: 100%; border-collapse: collapse; }
+  .detail-table th { text-align: left; padding: 8px 12px; color: #888; font-weight: normal; width: 140px; }
+  .detail-table td { padding: 8px 12px; }
+  .page-header { margin-bottom: 24px; }
+  .page-header h1 { margin-top: 12px; }
+  .source-badge { padding: 2px 8px; border-radius: 4px; background: #1a3a5a; color: #5dafff; font-size: 11px; }
+</style>

@@ -1,0 +1,75 @@
+<%- include('_head', {title: 'DNC List'}) %>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-name">⚡ Snapatask</div><div class="brand-sub">CRM v1.0</div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <a href="/" class="nav-item">📊 Overview</a>
+      <a href="/contractors" class="nav-item">🔧 Contractors</a>
+      <a href="/customers" class="nav-item">👤 Customers</a>
+      <div class="nav-label">Actions</div>
+      <a href="/outreach" class="nav-item">📨 Outreach Queue</a>
+      <a href="/dnc" class="nav-item active">🚫 DNC List</a>
+      <div class="nav-label">Insights</div>
+      <a href="/report" class="nav-item">📈 Reports</a>
+    </nav>
+    <div class="sidebar-footer">Snapatask CRM</div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">Do Not Contact List</div>
+      <div class="topbar-right"><span class="text-muted text-mono" style="font-size:12px"><%= entries.length %> entries</span></div>
+    </div>
+    <div class="content">
+      <div class="table-wrap" style="margin-bottom:20px">
+        <div class="table-header"><span class="table-title">Add to DNC List</span></div>
+        <form method="POST" action="/dnc/add" style="padding:20px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:5px">Phone</div>
+            <input name="phone" placeholder="07700 000000" style="padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:5px">Email</div>
+            <input name="email" placeholder="email@example.com" style="padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:5px">Name</div>
+            <input name="name" placeholder="Contact name" style="padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--text2);margin-bottom:5px">Reason</div>
+            <input name="reason" placeholder="Reason for DNC..." style="padding:8px 12px;border:1px solid var(--border);border-radius:7px;background:var(--surface2);color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;min-width:180px">
+          </div>
+          <button type="submit" class="btn btn-danger">+ Add to DNC</button>
+        </form>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">DNC Entries</span>
+          <span class="table-count"><%= entries.length %> records</span>
+        </div>
+        <%if(entries.length===0){%>
+        <div class="empty-state">
+          <div class="icon">✅</div>
+          DNC list is empty — no contacts blocked yet.
+        </div>
+        <%}else{%>
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Reason</th><th>Date Added</th><th>Source</th></tr></thead>
+          <tbody>
+            <%entries.forEach(e=>{%>
+            <tr>
+              <td><%=e.name||'—'%></td>
+              <td class="text-mono" style="font-size:12px"><%=e.phone||'—'%></td>
+              <td class="text-mono" style="font-size:12px"><%=e.email||'—'%></td>
+              <td class="text-muted"><%=e.reason||'—'%></td>
+              <td class="text-muted text-mono" style="font-size:11px"><%=e.date_added?new Date(e.date_added).toLocaleDateString():'—'%></td>
+              <td><span class="badge badge-new" style="font-size:10px"><%=e.source||'manual'%></span></td>
+            </tr>
+            <%})%>
+          </tbody>
+        </table>
+        <%}%>
+      </div>
+    </div>
+  </main>
+</body></html>

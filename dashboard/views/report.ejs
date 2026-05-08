@@ -1,0 +1,103 @@
+<%- include('_head', {title: 'Report'}) %>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-name">⚡ Snapatask</div><div class="brand-sub">CRM v1.0</div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <a href="/" class="nav-item">📊 Overview</a>
+      <a href="/contractors" class="nav-item">🔧 Contractors</a>
+      <a href="/customers" class="nav-item">👤 Customers</a>
+      <div class="nav-label">Actions</div>
+      <a href="/outreach" class="nav-item">📨 Outreach Queue</a>
+      <a href="/dnc" class="nav-item">🚫 DNC List</a>
+      <div class="nav-label">Insights</div>
+      <a href="/report" class="nav-item active">📈 Reports</a>
+    </nav>
+    <div class="sidebar-footer">Snapatask CRM</div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">Daily Report</div>
+      <div class="topbar-right"><span class="text-muted text-mono" style="font-size:11px">Generated: <%= new Date(generated_at).toLocaleString() %></span></div>
+    </div>
+    <div class="content">
+      <div class="stat-grid">
+        <div class="stat-card blue"><div class="stat-num"><%=summary.total_contractors%></div><div class="stat-label">Total Contractors</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.total_customers%></div><div class="stat-label">Total Customers</div></div>
+        <div class="stat-card yellow"><div class="stat-num"><%=summary.queued%></div><div class="stat-label">Queued</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.sent%></div><div class="stat-label">Sent</div></div>
+        <div class="stat-card red"><div class="stat-num"><%=summary.failed%></div><div class="stat-label">Failed</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.replied%></div><div class="stat-label">Replied</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.interested%></div><div class="stat-label">Interested</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.registered%></div><div class="stat-label">Registered</div></div>
+        <div class="stat-card"><div class="stat-num text-mono" style="font-size:22px"><%=summary.avg_score%></div><div class="stat-label">Avg Score</div></div>
+        <div class="stat-card"><div class="stat-num"><%=summary.licensed%></div><div class="stat-label">Licensed Carriers</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px">
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-title">By Score</span></div>
+          <table>
+            <thead><tr><th>Score</th><th>Count</th></tr></thead>
+            <tbody>
+              <%by_score.forEach(r=>{%>
+              <tr>
+                <td><span class="score-pill <%=r.lead_score>=7?'score-high':r.lead_score>=5?'score-mid':'score-low'%>"><%=r.lead_score%>/10</span></td>
+                <td class="text-mono"><%=r.count%></td>
+              </tr>
+              <%})%>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-title">By Contact Status</span></div>
+          <table>
+            <thead><tr><th>Status</th><th>Count</th></tr></thead>
+            <tbody>
+              <%by_status.forEach(r=>{%>
+              <tr>
+                <td><span class="badge badge-<%=r.contact_status%>"><%=r.contact_status%></span></td>
+                <td class="text-mono"><%=r.count%></td>
+              </tr>
+              <%})%>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-wrap">
+          <div class="table-header"><span class="table-title">By Reply Status</span></div>
+          <table>
+            <thead><tr><th>Reply</th><th>Count</th></tr></thead>
+            <tbody>
+              <%by_reply.forEach(r=>{%>
+              <tr>
+                <td><span class="badge badge-<%=r.reply_status%>"><%=r.reply_status%></span></td>
+                <td class="text-mono"><%=r.count%></td>
+              </tr>
+              <%})%>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">Top Locations</span></div>
+        <table>
+          <thead><tr><th>Location</th><th>Contractors</th><th>Share</th></tr></thead>
+          <tbody>
+            <%by_location.forEach(r=>{
+              const pct=Math.round((r.count/summary.total_contractors)*100);
+            %>
+            <tr>
+              <td><%=r.location||'Unknown'%></td>
+              <td class="text-mono"><%=r.count%></td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="height:4px;width:<%=pct*2%>px;max-width:120px;background:var(--accent);border-radius:2px;opacity:0.7"></div>
+                  <span class="text-muted text-mono" style="font-size:11px"><%=pct%>%</span>
+                </div>
+              </td>
+            </tr>
+            <%})%>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</body></html>

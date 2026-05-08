@@ -1,0 +1,11 @@
+# Never push these
+.env
+*.env
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+
+# Keep example files
+!*.env.example

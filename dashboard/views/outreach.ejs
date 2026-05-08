@@ -1,0 +1,113 @@
+<%- include('_head', {title: 'Outreach Queue'}) %>
+  <aside class="sidebar">
+    <div class="sidebar-brand"><div class="brand-name">⚡ Snapatask</div><div class="brand-sub">CRM v1.0</div></div>
+    <nav class="sidebar-nav">
+      <div class="nav-label">Main</div>
+      <a href="/" class="nav-item">📊 Overview</a>
+      <a href="/contractors" class="nav-item">🔧 Contractors</a>
+      <a href="/customers" class="nav-item">👤 Customers</a>
+      <div class="nav-label">Actions</div>
+      <a href="/outreach" class="nav-item active">📨 Outreach Queue</a>
+      <a href="/dnc" class="nav-item">🚫 DNC List</a>
+      <div class="nav-label">Insights</div>
+      <a href="/report" class="nav-item">📈 Reports</a>
+    </nav>
+    <div class="sidebar-footer">Snapatask CRM</div>
+  </aside>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-title">Outreach Queue — Manual Review</div>
+      <div class="topbar-right">
+        <span style="font-size:12px;color:var(--accent3);font-weight:600">⚠️ MANUAL_REVIEW_MODE — Nothing sends automatically</span>
+      </div>
+    </div>
+    <div class="content">
+      <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+        <%counts.forEach(c=>{%>
+        <div class="stat-card <%=c.delivery_status==='queued'?'yellow':c.delivery_status==='failed'?'red':''%>">
+          <div class="stat-num text-mono"><%=c.count%></div>
+          <div class="stat-label"><%=c.delivery_status%></div>
+        </div>
+        <%})%>
+      </div>
+      <form class="filters-bar" method="GET" action="/outreach">
+        <select name="status">
+          <option value="">All Statuses</option>
+          <option <%=filters.status==='queued'?'selected':''%> value="queued">Queued</option>
+          <option <%=filters.status==='sent'?'selected':''%> value="sent">Sent</option>
+          <option <%=filters.status==='failed'?'selected':''%> value="failed">Failed</option>
+        </select>
+        <select name="lead_type">
+          <option value="">All Types</option>
+          <option <%=filters.lead_type==='contractor'?'selected':''%> value="contractor">Contractors</option>
+          <option <%=filters.lead_type==='customer'?'selected':''%> value="customer">Customers</option>
+        </select>
+        <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+        <a href="/outreach" class="btn btn-ghost btn-sm">Reset</a>
+      </form>
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">Messages to Review & Approve</span>
+          <span class="table-count"><%= count %> messages</span>
+        </div>
+        <%if(logs.length===0){%>
+        <div class="empty-state"><div class="icon">📨</div>No messages in queue.</div>
+        <%}else{%>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr><th>Status</th><th>Type</th><th>Lead</th><th>Location</th><th>Phone</th><th>Score</th><th>Channel</th><th>Message Preview</th><th>Queued</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              <%logs.forEach(log=>{%>
+              <tr id="log-<%=log.id%>">
+                <td><span class="badge badge-<%=log.delivery_status%>"><%=log.delivery_status%></span></td>
+                <td><span class="badge badge-new" style="font-size:10px"><%=log.lead_type%></span></td>
+                <td style="max-width:160px"><div class="truncate" title="<%=log.lead_name%>"><%- (log.lead_name||"—").replace(/&amp;/g,"&") %></div></td>
+                <td class="text-muted" style="font-size:12px"><%=(log.lead_location||'').split(',')[0]%></td>
+                <td class="text-mono" style="font-size:12px"><%=log.lead_phone||'—'%></td>
+                <td><%if(log.lead_score){%><span class="score-pill score-mid"><%=log.lead_score%>/10</span><%}else{%>—<%}%></td>
+                <td><span class="badge badge-queued"><%=log.channel%></span></td>
+                <td style="max-width:200px">
+                  <div class="truncate text-muted" style="font-size:12px" title="<%=log.message_body%>">
+                    <%=log.message_body.substring(0,70)%>...
+                  </div>
+                </td>
+                <td class="text-muted text-mono" style="font-size:11px"><%=new Date(log.created_at).toLocaleDateString()%></td>
+                <td>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    <%if(log.lead_url){%><a href="<%=log.lead_url%>" target="_blank" class="btn btn-ghost btn-xs">View</a><%}%>
+                    <%if(log.delivery_status==='queued'){%>
+                    <button onclick="markSent('<%=log.id%>')" class="btn btn-primary btn-xs">✓ Sent</button>
+                    <button onclick="markFailed('<%=log.id%>')" class="btn btn-danger btn-xs">✗ Fail</button>
+                    <%}%>
+                  </div>
+                </td>
+              </tr>
+              <%})%>
+            </tbody>
+          </table>
+        </div>
+        <%}%>
+      </div>
+    </div>
+  </main>
+  <div class="toast" id="toast">✅ Updated</div>
+  <script>
+    async function markSent(id){
+      await fetch('/outreach/'+id+'/sent',{method:'POST'});
+      document.getElementById('log-'+id).style.opacity='0.4';
+      showToast('✅ Marked as sent');
+    }
+    async function markFailed(id){
+      await fetch('/outreach/'+id+'/failed',{method:'POST'});
+      document.getElementById('log-'+id).style.opacity='0.4';
+      showToast('❌ Marked as failed');
+    }
+    function showToast(msg){
+      const t=document.getElementById('toast');
+      t.textContent=msg;t.style.display='block';
+      setTimeout(()=>t.style.display='none',2000);
+    }
+  </script>
+</body></html>

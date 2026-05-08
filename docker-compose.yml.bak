@@ -1,0 +1,122 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - snapatask-net
+
+  dashboard:
+    image: node:24
+    container_name: dashboard
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "0.0.0.0:3200:3200"
+    environment:
+      - NODE_ENV=production
+      - PORT=3200
+    volumes:
+      - ./dashboard:/app
+      - ./shared:/shared
+    command: sh -c "npm install && node app.js"
+    networks:
+      - snapatask-net
+
+  paperclip:
+    image: node:24
+    container_name: paperclip
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://paperclip_user:Paperclip2026xPq@postgres:5432/paperclip
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PAPERCLIP_HOME=/paperclip-data
+    volumes:
+      - /root/.paperclip:/paperclip-data
+    ports:
+      - "0.0.0.0:3100:3100"
+    command: sh -c "npm install -g paperclipai && paperclipai run"
+    networks:
+      - snapatask-net
+
+  openclaw:
+    image: node:24
+    container_name: openclaw
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - /root/.openclaw:/root/.openclaw
+      - /usr/lib/node_modules/openclaw:/usr/lib/node_modules/openclaw
+      - /usr/bin/openclaw:/usr/bin/openclaw
+    ports:
+      - "0.0.0.0:18789:18789"
+    command: sh -c "node /usr/lib/node_modules/openclaw/dist/entry.js gateway --port 18789"
+    networks:
+      - snapatask-net
+
+  hermes:
+    image: python:3.11-slim
+    container_name: hermes
+    restart: unless-stopped
+    environment:
+      - HERMES_HOME=/root/.hermes
+      - VIRTUAL_ENV=/hermes-agent/venv
+      - PATH=/hermes-agent/venv/bin:/hermes-agent/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+    volumes:
+      - /usr/local/lib/hermes-agent:/hermes-agent
+      - /root/.hermes:/root/.hermes
+      - /root/.local/share/uv/python:/root/.local/share/uv/python
+    working_dir: /hermes-agent
+    command: sh -c "/hermes-agent/venv/bin/python -m hermes_cli.main gateway run --replace"
+    networks:
+      - snapatask-net
+
+  agents:
+    image: node:24
+    container_name: agents
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: sh -c "echo 'Agents container ready' && tail -f /dev/null"
+    networks:
+      - snapatask-net
+
+networks:
+  snapatask-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
