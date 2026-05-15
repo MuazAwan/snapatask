@@ -25,7 +25,7 @@ def get_listing_urls():
     ]
     for query in search_queries:
         for page_num in range(1, 3):
-            url = f"https://www.gumtree.com/search?q={query}&search_location=London&page={page_num}"
+            url = f"https://www.gumtree.com/search?q={query}&search_location=London&page={page_num}&search_category=for-sale&subcategory=wanted"
             print(f"  Searching: {url[:80]}")
             try:
                 page = fetch(url)
@@ -168,6 +168,24 @@ for i, url in enumerate(urls[:30]):
 with open('/tmp/leads.json', 'w') as f:
     json.dump(leads, f, indent=2)
 print(f"\n✓ JSON backup saved: /tmp/leads.json ({len(leads)} leads)")
+
+# Filter out service providers before saving
+PROVIDER_SIGNALS = [
+    'we offer', 'we provide', 'our services', 'call us', 'fully licensed',
+    'man and van', 'man & van', 'removal company', 'removal service',
+    'same day service', 'professional removal', 'house clearance service',
+    'rubbish removal service', 'waste removal service', 'licensed waste',
+    'book now', 'free quote', 'no job too small'
+]
+
+def is_provider(lead):
+    text = ((lead.get('post_title') or '') + ' ' + (lead.get('post_description') or '')).lower()
+    return any(signal in text for signal in PROVIDER_SIGNALS)
+
+genuine_leads = [l for l in leads if not is_provider(l)]
+provider_count = len(leads) - len(genuine_leads)
+print(f"\n✓ Filtered out {provider_count} service provider ads")
+leads = genuine_leads
 
 # Save to PostgreSQL
 print("\nSaving to PostgreSQL...")
