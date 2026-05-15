@@ -15,4 +15,7 @@ echo "[$DATE] Checkatrade scraper done" >> $LOG
 python3 /opt/snapatask/lead-scraper.py >> $LOG 2>&1
 echo "[$DATE] Gumtree scraper done" >> $LOG
 
+# Run data cleaner
+python3 /opt/snapatask/data-cleaner.py >> $LOG 2>&1
+echo "[$DATE] Data cleaner done" >> $LOG
 echo "[$DATE] All scrapers complete" >> $LOG
