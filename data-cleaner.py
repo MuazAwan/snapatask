@@ -39,7 +39,7 @@ try:
     print(f"[3a] Deleted {cur.rowcount} irrelevant customer leads")
 
     # 3b. Delete fake phone records from customer_leads
-    cur.execute("DELETE FROM customer_leads WHERE phone = '02604301904'")
+    cur.execute("DELETE FROM customer_leads WHERE phone IN ('02604301904', '073760481989')")
     print(f"[3] Deleted {cur.rowcount} fake phone records from customer_leads")
 
     # 4. Build provider signals SQL
