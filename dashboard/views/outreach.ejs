@@ -25,7 +25,7 @@
       <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
         <%counts.forEach(c=>{%>
         <div class="stat-card <%=c.delivery_status==='queued'?'yellow':c.delivery_status==='failed'?'red':''%>">
-          <div class="stat-num text-mono"><%=c.count%></div>
+          <div class="stat-num text-mono" id="counter-<%=c.delivery_status%>"><%=c.count%></div>
           <div class="stat-label"><%=c.delivery_status%></div>
         </div>
         <%})%>
@@ -95,9 +95,18 @@
   <div class="toast" id="toast">✅ Updated</div>
   <script>
     async function markSent(id){
-      await fetch('/outreach/'+id+'/sent',{method:'POST'});
-      document.getElementById('log-'+id).style.opacity='0.4';
-      showToast('✅ Marked as sent');
+      const res = await fetch('/outreach/'+id+'/sent',{method:'POST'});
+      if(res.ok){
+        document.getElementById('log-'+id).style.opacity='0.4';
+        document.getElementById('log-'+id).style.pointerEvents='none';
+        const sentEl = document.getElementById('counter-sent');
+        if(sentEl) sentEl.textContent = parseInt(sentEl.textContent||0) + 1;
+        const queuedEl = document.getElementById('counter-queued');
+        if(queuedEl) queuedEl.textContent = Math.max(0, parseInt(queuedEl.textContent||0) - 1);
+        showToast('✅ SMS sent successfully!');
+      } else {
+        showToast('❌ Failed to send SMS');
+      }
     }
     async function markFailed(id){
       await fetch('/outreach/'+id+'/failed',{method:'POST'});
