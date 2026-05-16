@@ -20,28 +20,25 @@ try:
     conn = psycopg2.connect(**DB)
     cur = conn.cursor()
 
-    # 1. Delete fake phone records
-    cur.execute("""
-        DELETE FROM contractor_leads 
-        WHERE phone = '02604301904' AND company_name = ''
-    """)
-    print(f"[1] Deleted {cur.rowcount} fake phone records")
+    # 1. Delete fake phone records from contractor_leads
+    cur.execute("DELETE FROM contractor_leads WHERE phone = '02604301904' AND company_name = ''")
+    print(f"[1] Deleted {cur.rowcount} fake phone records from contractor_leads")
 
-    # 2. Delete empty gumtree records
-    cur.execute("""
-        DELETE FROM contractor_leads 
-        WHERE company_name = '' 
-        AND lead_score IS NULL 
-        AND source_platform = 'gumtree'
-    """)
-    print(f"[2] Deleted {cur.rowcount} empty gumtree records")
+    # 2. Delete empty gumtree records from contractor_leads
+    cur.execute("DELETE FROM contractor_leads WHERE company_name = '' AND lead_score IS NULL AND source_platform = 'gumtree'")
+    print(f"[2] Deleted {cur.rowcount} empty gumtree records from contractor_leads")
 
-    # 3. Move misclassified providers from customer_leads
+    # 3. Delete fake phone records from customer_leads
+    cur.execute("DELETE FROM customer_leads WHERE phone = '02604301904'")
+    print(f"[3] Deleted {cur.rowcount} fake phone records from customer_leads")
+
+    # 4. Build provider signals SQL
     signals_sql = ' OR '.join([
         f"(post_title ILIKE '%{s}%' OR post_description ILIKE '%{s}%')"
         for s in PROVIDER_SIGNALS
     ])
 
+    # 5. Move misclassified providers from customer_leads to contractor_leads
     cur.execute(f"""
         INSERT INTO contractor_leads (
             source_platform, source_url, company_name, contact_name,
@@ -59,14 +56,14 @@ try:
     moved = cur.rowcount
 
     cur.execute(f"DELETE FROM customer_leads WHERE {signals_sql}")
-    print(f"[3] Moved {moved} misclassified providers to contractor_leads")
+    print(f"[4] Moved {moved} misclassified providers to contractor_leads")
 
-    # 4. Final counts
+    # 6. Final counts
     cur.execute("SELECT COUNT(*) FROM contractor_leads")
     contractors = cur.fetchone()[0]
     cur.execute("SELECT COUNT(*) FROM customer_leads")
     customers = cur.fetchone()[0]
-    print(f"[4] Final: {contractors} contractors | {customers} customers")
+    print(f"[5] Final: {contractors} contractors | {customers} customers")
 
     conn.commit()
     cur.close()
