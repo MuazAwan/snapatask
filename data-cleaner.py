@@ -28,7 +28,17 @@ try:
     cur.execute("DELETE FROM contractor_leads WHERE company_name = '' AND lead_score IS NULL AND source_platform = 'gumtree'")
     print(f"[2] Deleted {cur.rowcount} empty gumtree records from contractor_leads")
 
-    # 3. Delete fake phone records from customer_leads
+    # 3. Delete irrelevant customer leads (wrong category)
+    IRRELEVANT_SIGNALS = [
+        'stress ball', 'iphone', 'apple', 'cassette', 'car jump',
+        'selling', 'for sale', 'sports', 'job lot', 'accordion',
+        'videograph', 'chinese restaurant', 'scrap metal'
+    ]
+    irr_sql = ' OR '.join([f"post_title ILIKE '%{s}%'" for s in IRRELEVANT_SIGNALS])
+    cur.execute(f"DELETE FROM customer_leads WHERE {irr_sql}")
+    print(f"[3a] Deleted {cur.rowcount} irrelevant customer leads")
+
+    # 3b. Delete fake phone records from customer_leads
     cur.execute("DELETE FROM customer_leads WHERE phone = '02604301904'")
     print(f"[3] Deleted {cur.rowcount} fake phone records from customer_leads")
 

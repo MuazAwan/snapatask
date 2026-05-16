@@ -76,7 +76,7 @@
                 <td class="text-muted text-mono" style="font-size:11px"><%=new Date(log.created_at).toLocaleDateString()%></td>
                 <td>
                   <div style="display:flex;gap:5px;flex-wrap:wrap">
-                    <a href="/contractors/<%=log.lead_id%>" class="btn btn-ghost btn-xs">View</a>
+                    <a href="/contractors/<%=log.lead_id%>" target="_blank" class="btn btn-ghost btn-xs">View</a>
                     <%if(log.delivery_status==='queued'){%>
                     <button onclick="markSent('<%=log.id%>')" class="btn btn-primary btn-xs">✓ Sent</button>
                     <button onclick="markFailed('<%=log.id%>')" class="btn btn-danger btn-xs">✗ Fail</button>
