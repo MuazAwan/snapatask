@@ -1,0 +1,201 @@
+services:
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - snapatask-net
+
+  dashboard:
+    image: node:24
+    container_name: dashboard
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "0.0.0.0:3200:3200"
+    environment:
+      - NODE_ENV=production
+      - PORT=3200
+      - TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+      - TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+      - TWILIO_FROM_NUMBER=YOUR_TWILIO_PHONE_NUMBER
+    volumes:
+      - ./dashboard:/app
+      - ./shared:/shared
+    command: sh -c "npm install && node app.js"
+    networks:
+      - snapatask-net
+
+  paperclip:
+    image: ghcr.io/paperclipai/paperclip:latest
+    container_name: paperclip
+    restart: unless-stopped
+    user: root
+    entrypoint:
+      - sh
+      - -c
+      - |
+        apt-get install -y python3-pip git -qq 2>/dev/null || true
+        pip install python-dotenv --break-system-packages -q 2>/dev/null || true
+        pip install git+https://github.com/NousResearch/hermes-agent --break-system-packages -q 2>/dev/null || true
+        printf '#!/bin/bash\nexec /usr/bin/python3 -m hermes_cli.main "$@"\n' > /usr/local/bin/hermes
+        chmod +x /usr/local/bin/hermes
+        exec docker-entrypoint.sh node --import ./server/node_modules/tsx/dist/loader.mjs server/dist/index.js
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - PORT=3100
+      - PAPERCLIP_HOME=/paperclip-data
+      - DATABASE_URL=postgresql://paperclip_user:YOUR_PAPERCLIP_DB_PASSWORD@postgres:5432/paperclip
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - PAPERCLIP_DEPLOYMENT_MODE=authenticated
+      - PAPERCLIP_MIGRATION_AUTO_APPLY=true
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - AUTH_DISABLE_SIGNUP=false
+      - BETTER_AUTH_TRUST_PROXY=true
+      - NODE_ENV=development
+      - TWILIO_ACCOUNT_SID=YOUR_TWILIO_ACCOUNT_SID
+      - TWILIO_AUTH_TOKEN=YOUR_TWILIO_AUTH_TOKEN
+      - TWILIO_FROM_NUMBER=YOUR_TWILIO_PHONE_NUMBER
+      - PAPERCLIP_PUBLIC_URL=http://187.77.69.171:3100
+      - PATH=/hermes-agent/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      - HERMES_SHEBANG_FIXED=true
+    volumes:
+      - /root/.paperclip:/paperclip-data
+      - /usr/local/lib/hermes-agent:/usr/local/lib/hermes-agent
+      - /root/.local/bin/hermes:/root/.local/bin/hermes
+      - /root/.local/share/uv/python:/root/.local/share/uv/python
+      - /usr/local/bin/hermes-wrapper:/usr/local/bin/hermes-wrapper
+      - /root/.hermes:/root/.hermes
+      - /usr/local/lib/python3.12/dist-packages/dotenv:/usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/dotenv:ro
+      - /usr/local/bin/hermes-paperclip:/usr/bin/hermes:ro
+      - /usr/bin/python3.12:/usr/bin/python3.12:ro
+      - /usr/lib/python3.12:/usr/lib/python3.12:ro
+      - /usr/lib/python3/dist-packages:/usr/lib/python3/dist-packages:ro
+      - /usr/local/lib/python3.12/dist-packages:/usr/local/lib/python3.12/dist-packages:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/yaml:/usr/local/lib/python3.13/dist-packages/yaml:ro
+      - /usr/local/lib/python3.12/dist-packages/dotenv:/usr/local/lib/python3.13/dist-packages/dotenv:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/httpx:/usr/local/lib/python3.13/dist-packages/httpx:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/httpcore:/usr/local/lib/python3.13/dist-packages/httpcore:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/prompt_toolkit:/usr/local/lib/python3.13/dist-packages/prompt_toolkit:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/wcwidth:/usr/local/lib/python3.13/dist-packages/wcwidth:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/rich:/usr/local/lib/python3.13/dist-packages/rich:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/anthropic:/usr/local/lib/python3.13/dist-packages/anthropic:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/anyio:/usr/local/lib/python3.13/dist-packages/anyio:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/sniffio:/usr/local/lib/python3.13/dist-packages/sniffio:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/distro:/usr/local/lib/python3.13/dist-packages/distro:ro
+      - /usr/local/bin/hermes-paperclip:/usr/bin/hermes-python3:ro
+      - /usr/bin/python3.12:/usr/bin/python3.12:ro
+      - /usr/lib/python3.12:/usr/lib/python3.12:ro
+      - /usr/lib/python3/dist-packages:/usr/lib/python3/dist-packages:ro
+      - /usr/local/lib/python3.12/dist-packages:/usr/local/lib/python3.12/dist-packages:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/yaml:/usr/local/lib/python3.13/dist-packages/yaml:ro
+      - /usr/local/lib/python3.12/dist-packages/dotenv:/usr/local/lib/python3.13/dist-packages/dotenv:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/httpx:/usr/local/lib/python3.13/dist-packages/httpx:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/httpcore:/usr/local/lib/python3.13/dist-packages/httpcore:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/prompt_toolkit:/usr/local/lib/python3.13/dist-packages/prompt_toolkit:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/wcwidth:/usr/local/lib/python3.13/dist-packages/wcwidth:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/rich:/usr/local/lib/python3.13/dist-packages/rich:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/anthropic:/usr/local/lib/python3.13/dist-packages/anthropic:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/anyio:/usr/local/lib/python3.13/dist-packages/anyio:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/sniffio:/usr/local/lib/python3.13/dist-packages/sniffio:ro
+      - /usr/local/lib/hermes-agent/venv/lib/python3.11/site-packages/distro:/usr/local/lib/python3.13/dist-packages/distro:ro
+      - /usr/local/bin/hermes:/usr/local/bin/hermes
+    ports:
+      - "0.0.0.0:3100:3100"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3100/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - snapatask-net
+
+  openclaw:
+    image: node:24
+    container_name: openclaw
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - /root/.openclaw:/root/.openclaw
+      - /usr/lib/node_modules/openclaw:/usr/lib/node_modules/openclaw
+      - /usr/bin/openclaw:/usr/bin/openclaw
+    ports:
+      - "0.0.0.0:18789:18789"
+    command: sh -c "node /usr/lib/node_modules/openclaw/dist/entry.js gateway --port 18789"
+    networks:
+      - snapatask-net
+
+  hermes:
+    image: python:3.11-slim
+    container_name: hermes
+    restart: unless-stopped
+    ports:
+      - "8642:8642"
+    environment:
+      - HERMES_HOME=/root/.hermes
+      - VIRTUAL_ENV=/hermes-agent/venv
+      - PATH=/hermes-agent/venv/bin:/hermes-agent/node_modules/.bin:/usr/local/bin:/usr/bin:/bin
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_PORT=8642
+      - API_SERVER_KEY=3998cd07dc3e7738de18a6a9bedc19b96a0361d329744b1a3e89a06e54820731
+      - GATEWAY_ALLOW_ALL_USERS=true
+    volumes:
+      - /usr/local/lib/hermes-agent:/hermes-agent
+      - /root/.hermes:/root/.hermes
+      - /root/.local/share/uv/python:/root/.local/share/uv/python
+      - /usr/local/bin/hermes-wrapper:/usr/local/bin/hermes-wrapper
+    working_dir: /hermes-agent
+    command: sh -c "/hermes-agent/venv/bin/python -m hermes_cli.main gateway run --replace"
+    networks:
+      - snapatask-net
+
+  agents:
+    image: node:24
+    container_name: agents
+    restart: unless-stopped
+    working_dir: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    command: sh -c "echo 'Agents container ready' && tail -f /dev/null"
+    networks:
+      - snapatask-net
+
+networks:
+  snapatask-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

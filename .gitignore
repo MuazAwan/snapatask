@@ -8,3 +8,6 @@ node_modules/
 __pycache__/
 *.pyc
 docker-compose.yml
+docker-compose.yml
+docker-compose.yml.bak
+.env
