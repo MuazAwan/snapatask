@@ -100,9 +100,81 @@ app.get('/outreach', async (req, res) => {
 
 app.post('/outreach/:id/sent', async (req, res) => {
   try {
+    // Get message and phone number
+    const msgResult = await pool.query(`
+      SELECT ol.message_body, ol.lead_type, ol.lead_id,
+        COALESCE(cl.phone, cu.phone) as phone,
+        COALESCE(cl.company_name, cu.customer_name) as name
+      FROM outreach_logs ol
+      LEFT JOIN contractor_leads cl ON ol.lead_type='contractor' AND ol.lead_id=cl.id
+      LEFT JOIN customer_leads cu ON ol.lead_type='customer' AND ol.lead_id=cu.id
+      WHERE ol.id=$1
+    `, [req.params.id]);
+
+    const msg = msgResult.rows[0];
+
+    if (msg && msg.phone) {
+      // Format UK phone to E.164
+      let phone = msg.phone.replace(/\s+/g, '').replace(/[^0-9+]/g, '');
+      if (phone.startsWith('0')) phone = '+44' + phone.slice(1);
+      if (!phone.startsWith('+')) phone = '+44' + phone;
+
+      // Send via Twilio
+      const accountSid = process.env.TWILIO_ACCOUNT_SID;
+      const authToken = process.env.TWILIO_AUTH_TOKEN;
+      const fromNumber = process.env.TWILIO_FROM_NUMBER;
+
+      const twilio = require('node:https');
+      const params = new URLSearchParams({
+        To: phone,
+        From: fromNumber,
+        Body: msg.message_body
+      });
+
+      const options = {
+        hostname: 'api.twilio.com',
+        path: `/2010-04-01/Accounts/${accountSid}/Messages.json`,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64')
+        }
+      };
+
+      await new Promise((resolve, reject) => {
+        const request = twilio.request(options, (response) => {
+          let data = '';
+          response.on('data', chunk => data += chunk);
+          response.on('end', () => {
+            const result = JSON.parse(data);
+            if (result.sid) {
+              console.log(`SMS sent to ${msg.name} (${phone}) - SID: ${result.sid}`);
+              resolve(result);
+            } else {
+              console.error(`SMS failed: ${JSON.stringify(result)}`);
+              reject(new Error(result.message || 'SMS failed'));
+            }
+          });
+        });
+        request.on('error', reject);
+        request.write(params.toString());
+        request.end();
+      });
+
+      // Update lead contact status
+      const table = msg.lead_type === 'contractor' ? 'contractor_leads' : 'customer_leads';
+      await pool.query(`UPDATE ${table} SET contact_status='contacted', last_contacted_at=NOW() WHERE id=$1`, [msg.lead_id]);
+    }
+
+    // Mark as sent
     await pool.query(`UPDATE outreach_logs SET delivery_status='sent', sent_at=NOW() WHERE id=$1`, [req.params.id]);
     res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    console.error('Send error:', e.message);
+    // Mark as failed if SMS failed
+    await pool.query(`UPDATE outreach_logs SET delivery_status='failed' WHERE id=$1`, [req.params.id]);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 app.post('/outreach/:id/failed', async (req, res) => {
